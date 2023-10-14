@@ -1,0 +1,7 @@
+apikey
+contests
+**/progress/
+**/contest*
+**/*tar.gz
+*.log
+venv/
