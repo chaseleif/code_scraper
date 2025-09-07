@@ -29,49 +29,49 @@ else
     echo -n "$(pad "Running since:" -19)"
     timefile=progress/lock
     totalsecs=$(($(date +"%s")-$(date -r progress/lock +"%s")))
-    elapseddays=$(($totalsecs/60/60/24))
-    elapsedhours=$(($totalsecs/60/60%24))
-    elapsedmins=$(($totalsecs/60%60))
-    elapsedsecs=$(($totalsecs%60))
+    elapseddays=$((totalsecs/60/60/24))
+    elapsedhours=$((totalsecs/60/60%24))
+    elapsedmins=$((totalsecs/60%60))
+    elapsedsecs=$((totalsecs%60))
   else
     echo -n "$(pad "Last stopped:" -19)"
     timefile=$(ls -t progress/progress* | head -n1)
   fi
-  echo $(date -r $timefile +"%d %b %R")
-  if [ ! -z $totalsecs ] ; then
+  date -r "$timefile" +"%d %b %R"
+  if [ -n "$totalsecs" ] ; then
     echo -n "$(pad "Running time:" -19)"
-    if [ $elapseddays -gt 0 ] ; then
+    if [ "$elapseddays" -gt 0 ] ; then
       echo -n "$elapseddays day"
-      if [ $elapseddays -ne 1 ] ; then echo -n "s" ; fi
+      if [ "$elapseddays" -ne 1 ] ; then echo -n "s" ; fi
       docomma=1
     fi
-    if [ $elapsedhours -gt 0 ] ; then
-      if [ ! -z $docomma ] ; then echo -n ", " ; else docomma=1 ; fi
+    if [ "$elapsedhours" -gt 0 ] ; then
+      if [ -n "$docomma" ] ; then echo -n ", " ; else docomma=1 ; fi
       echo -n "$elapsedhours hour"
-      if [ $elapsedhours -ne 1 ] ; then echo -n "s" ; fi
+      if [ "$elapsedhours" -ne 1 ] ; then echo -n "s" ; fi
     fi
-    if [ $elapsedmins -gt 0 ] ; then
-      if [ ! -z $docomma ] ; then echo -n ", " ; else docomma=1 ; fi
+    if [ "$elapsedmins" -gt 0 ] ; then
+      if [ -n "$docomma" ] ; then echo -n ", " ; else docomma=1 ; fi
       echo -n "$elapsedmins min"
-      if [ $elapsedmins -ne 1 ] ; then echo -n "s" ; fi
+      if [ "$elapsedmins" -ne 1 ] ; then echo -n "s" ; fi
     fi
-    if [ $elapsedsecs -gt 0 ] ; then
-      if [ ! -z $docomma ] ; then echo -n ", " ; fi
+    if [ "$elapsedsecs" -gt 0 ] ; then
+      if [ -n "$docomma" ] ; then echo -n ", " ; fi
       echo -n "$elapsedsecs sec"
-      if [ $elapsedsecs -ne 1 ] ; then echo -n "s" ; fi
+      if [ "$elapsedsecs" -ne 1 ] ; then echo -n "s" ; fi
     fi
     echo ""
   fi
   failedsubs=$(grep -R ^sub progress/progress* | wc -l)
-  if [ $failedsubs -ne 0 ] ; then
+  if [ "$failedsubs" -ne 0 ] ; then
     echo "$(pad "Failed retrievals:" -19)$failedsubs"
   fi
 fi
 if [ -f err.log ] ; then
-  errors=$(grep ^\# err.log | wc -l)
+  errors=$(grep -c ^\# err.log)
   echo "$(pad "Errors logged:" -19)$errors"
-  if [ ! -z $totalsecs ] ; then
-    errorrate=$(echo "scale=4; $(($errors*60*60))/$totalsecs" | bc -l)
+  if [ -n "$totalsecs" ] ; then
+    errorrate=$(echo "scale=4; $((errors*60*60))/$totalsecs" | bc -l)
     if [[ "$errorrate" =~ ^\. ]] ; then
       errorrate=0$errorrate
     fi
@@ -79,7 +79,7 @@ if [ -f err.log ] ; then
   fi
   echo "$(pad "Last error logged:" -19)$(date -r err.log +"%d %b %R")"
 fi
-if [ ! -z $1 ] && [ $1 == "-h" ] ; then
+if [ -n "$1" ] && [ "$1" == "-h" ] ; then
   sizes=($(du -c -d0 -h contest*/ 2> /dev/null))
 else
   sizes=($(du -c -d0 -BM contest*/ 2> /dev/null))
@@ -91,40 +91,36 @@ if [ $? -ne 0 ] ; then
 fi
 totalfiles=0
 for num in $(ls -d contest* | cut -dt -f3 | sort --numeric) ; do
-  if [ ! -d contest$num ] ; then
+  if [ ! -d "contest$num" ] ; then
     continue
   fi
-  for i in ${!sizes[@]} ; do
-    [[ ${sizes[$i]} =~ contest$num ]] && size=${sizes[$(($i-1))]} && break
+  for i in "${!sizes[@]}" ; do
+    [[ "${sizes[$i]}" =~ contest$num ]] && size=${sizes[$((i-1))]} && break
   done
-  filecount=$(find contest$num/ -type f | wc -l)
-  totalfiles=$(($totalfiles+$filecount))
-  if [ -f progress/progress$num ] ; then
-    if [ -z $(grep ^\# progress/progress$num) ] ; then
+  filecount=$(find "contest$num/" -type f | wc -l)
+  totalfiles=$((totalfiles+filecount))
+  if [ -f "progress/progress$num" ] ; then
+    if [ -z "$(grep ^\# "progress/progress$num")" ] ; then
       ipcount=$filecount
       ipsize=$size
       inprogress=$num
       continue
     fi
   fi
-  if [ -z $printedcomplete ] ; then
+  if [ -z "$printedcomplete" ] ; then
     echo "______________________________"
     echo "Complete:"
     printedcomplete=1
   fi
-  echo "$(pad contest$num -12)-$(pad $filecount 8)$(pad $size 7)"
+  echo "$(pad "contest$num" -12)-$(pad "$filecount" 8)$(pad "$size" 7)"
 done
-if [ ! -z $inprogress ] ; then
-  tput colors > /dev/null 2>&1
-  if [ $? -eq 0 ] ; then
-    bold=$(tput bold)
-    normal=$(tput sgr0)
-  fi
+if [ -n "$inprogress" ] ; then
+  tput colors > /dev/null 2>&1 && bold=$(tput bold) && normal=$(tput sgr0)
   echo "________________________________"
-  echo -n $bold
+  echo -n "$bold"
   echo "In progress:"
-  echo "$(pad contest$inprogress -12)-$(pad $ipcount 8)$(pad $ipsize 7)"
-  echo -n $normal
+  echo "$(pad "contest$inprogress" -12)-$(pad "$ipcount" 8)$(pad "$ipsize" 7)"
+  echo -n "$normal"
 fi
 echo "________________________________"
-echo "$(pad total -12)-$(pad $totalfiles 8)$(pad ${sizes[-2]} 7)"
+echo "$(pad total -12)-$(pad "$totalfiles" 8)$(pad "${sizes[-2]}" 7)"
